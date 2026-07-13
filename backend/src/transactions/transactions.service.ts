@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { Transaction as PrismaTransaction, TransactionType as PrismaTransactionType } from "@prisma/client";
-import { Transaction, TransactionSummary, TransactionType } from "@expense-tracker/shared";
+import { PaginatedResult, Transaction, TransactionSummary, TransactionType } from "@expense-tracker/shared";
 import { TransactionsRepository } from "./transactions.repository";
 import { CreateTransactionDto } from "./dto/create-transaction.dto";
 import { UpdateTransactionDto } from "./dto/update-transaction.dto";
@@ -22,14 +22,28 @@ export class TransactionsService {
     return this.toPublic(transaction);
   }
 
-  async findAll(userId: string, query: QueryTransactionsDto): Promise<Transaction[]> {
-    const transactions = await this.transactionsRepository.findAllByUser(userId, {
-      dateFrom: query.dateFrom,
-      dateTo: query.dateTo,
-      type: query.type as PrismaTransactionType | undefined,
-      categoryId: query.categoryId,
-    });
-    return transactions.map((transaction) => this.toPublic(transaction));
+  async findAll(userId: string, query: QueryTransactionsDto): Promise<PaginatedResult<Transaction>> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+
+    const { items, total } = await this.transactionsRepository.findAllByUser(
+      userId,
+      {
+        dateFrom: query.dateFrom,
+        dateTo: query.dateTo,
+        type: query.type as PrismaTransactionType | undefined,
+        categoryId: query.categoryId,
+      },
+      { page, limit },
+    );
+
+    return {
+      items: items.map((transaction) => this.toPublic(transaction)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(userId: string, id: string): Promise<Transaction> {

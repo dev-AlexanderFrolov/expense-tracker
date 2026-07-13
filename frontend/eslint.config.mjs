@@ -1,6 +1,13 @@
 import { baseConfig } from "@expense-tracker/eslint-config";
-import { FlatCompat } from "@eslint/eslintrc";
+import nextPlugin from "@next/eslint-plugin-next";
 
-const compat = new FlatCompat();
-
-export default [...baseConfig, ...compat.extends("next/core-web-vitals")];
+export default [
+  ...baseConfig,
+  {
+    plugins: { "@next/next": nextPlugin },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
+    },
+  },
+];

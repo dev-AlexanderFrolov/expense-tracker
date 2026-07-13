@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { CommandBus, QueryBus } from "@nestjs/cqrs";
-import { Transaction, TransactionSummary, User } from "@expense-tracker/shared";
+import { PaginatedResult, Transaction, TransactionSummary, User } from "@expense-tracker/shared";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { CreateTransactionDto } from "./dto/create-transaction.dto";
@@ -32,8 +32,11 @@ export class TransactionsController {
   }
 
   @Get()
-  @ApiOperation({ summary: "Получить список транзакций пользователя с фильтрами" })
-  findAll(@CurrentUser() user: User, @Query() query: QueryTransactionsDto): Promise<Transaction[]> {
+  @ApiOperation({ summary: "Получить список транзакций пользователя с фильтрами и пагинацией" })
+  findAll(
+    @CurrentUser() user: User,
+    @Query() query: QueryTransactionsDto,
+  ): Promise<PaginatedResult<Transaction>> {
     return this.queryBus.execute(new GetTransactionsQuery(user.id, query));
   }
 

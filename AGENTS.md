@@ -25,8 +25,8 @@ expence-tracker/
 ├── frontend/            # Next.js приложение (порт 3000), FSD-архитектура — см. раздел «Frontend: Feature-Sliced Design»
 │   └── src/
 │       ├── app/         # Next.js App Router = FSD-слой app (routing, layout, providers, globals.css)
-│       ├── views/       # FSD-слой pages (композиция страниц; назван `views`, а не `pages`, чтобы не конфликтовать с Pages Router Next.js). Есть слайс `legal` (статичные `/terms`, `/privacy`)
-│       ├── widgets/      # FSD-слой widgets (композитные независимые блоки UI)
+│       ├── views/       # FSD-слой pages (композиция страниц; назван `views`, а не `pages`, чтобы не конфликтовать с Pages Router Next.js). Слайсы: `legal` (статичные `/terms`, `/privacy`), `dashboard`, `categories`, `profile`
+│       ├── widgets/      # FSD-слой widgets: `app-layout` — защищённая оболочка (`/`, `/categories`, `/profile`) с сайдбар-меню, auth-guard и logout
 │       ├── features/     # FSD-слой features (пользовательские сценарии, напр. auth/login)
 │       ├── entities/     # FSD-слой entities (бизнес-сущности, напр. user)
 │       └── shared/        # FSD-слой shared (api-клиент, ui из shadcn, lib, config, providers)
@@ -58,15 +58,17 @@ expence-tracker/
   - Архитектура: прямой инжект `Controller -> Service -> Repository` (без CQRS, в отличие от `Users`).
   - DTO (`CreateCategoryDto`/`UpdateCategoryDto`) — в `packages/shared` + класс-валидаторы в `backend/src/categories/dto`.
 - **Transactions** (`backend/src/transactions`): учёт доходов/расходов, требует `JwtAuthGuard`.
-  - `POST /transactions`, `GET /transactions` (фильтры `dateFrom`/`dateTo`/`type`/`categoryId`), `GET /transactions/summary` (агрегация по `month`+`year`, оба обязательны), `GET /transactions/:id`, `PATCH /transactions/:id`, `DELETE /transactions/:id`. Маршрут `summary` объявлен до `:id`.
+  - `POST /transactions`, `GET /transactions` (фильтры `dateFrom`/`dateTo`/`type`/`categoryId` + пагинация `page`/`limit`, дефолт 1/10, ответ `PaginatedResult<Transaction>`), `GET /transactions/summary` (агрегация по `month`+`year`, оба обязательны), `GET /transactions/:id`, `PATCH /transactions/:id`, `DELETE /transactions/:id`. Маршрут `summary` объявлен до `:id`.
   - Архитектура: CQRS (`CommandBus`/`QueryBus` в контроллере, хендлеры → `TransactionsService` → `TransactionsRepository`), по образцу `Users`.
   - Изоляция по пользователю через `findOwnedOrThrow` (как в `Categories`); `amount` — `Decimal(12,2)` → `number`, даты → ISO-строки.
   - Типы/DTO (`Transaction`, `Create/UpdateTransactionDto`, `TransactionSummary`) — в `packages/shared`.
 - **Auth UI** (`frontend`): страницы `/login` и `/register`, построены на shadcn/ui (`Form`, `Input`, `Button`, `Card`, `Alert`, `Checkbox`).
   - Формы с валидацией react-hook-form + zod (`features/auth/login`, `features/auth/register`).
-  - Успешный логин/регистрация → `AuthResponse` кладётся в Zustand-стор `entities/user` (персист в `localStorage`) и токен подставляется во все запросы `shared/api/client`.
-  - Главная страница (`/`) реактивно показывает приветствие + кнопку выхода (`features/auth/logout`) для авторизованных, иначе — ссылки на вход/регистрацию.
+  - Успешный логин/регистрация → `AuthResponse` кладётся в Zustand-стор `entities/user` (персист в `localStorage`) и токен подставляется во все запросы `shared/api/client`; редирект на `/` (главный экран).
   - Регистрация требует чекбокс согласия с условиями (`agreeToTerms` в `features/auth/register/model/schema.ts`, только фронтовая валидация, в `CreateUserDto` на backend не передаётся). Ссылки внутри лейбла ведут на статичные страницы `/terms` и `/privacy` (слайс `views/legal`), открываются в той же вкладке (без `target="_blank"`).
+- **Главный экран** (`frontend`): route group `app/(app)` (маршруты `/`, `/categories`, `/profile`) под общим защищённым layout `widgets/app-layout` — auth-guard редиректит неавторизованных на `/login`, сайдбар (shadcn `Sidebar`) с меню и профилем/logout.
+  - `/` → `views/dashboard` + `features/transactions/list`: таблица транзакций постранично (10/стр) через `useQuery` (`entities/transaction`, `keepPreviousData`), категория подтягивается отдельным запросом (`entities/category`) и джойнится на клиенте по `categoryId`.
+  - `/categories`, `/profile` — минимальные заглушки (`views/categories`, `views/profile`); полноценный CRUD категорий и профиль — отдельные задачи.
 
 ## Frontend: Feature-Sliced Design
 
@@ -74,7 +76,7 @@ Frontend построен по методологии **[Feature-Sliced Design](
 
 - **`app/`** — совпадает с Next.js App Router (`layout.tsx`, `page.tsx`, `globals.css`, роуты `login/page.tsx`, `register/page.tsx`). Здесь же глобальные провайдеры (`QueryProvider`, `Toaster`). Роуты — тонкие обёртки, рендерят компонент из `views/*`.
 - **`views/`** — FSD-слой `pages` (композиция страницы из виджетов/фич). Назван `views`, а не `pages`, **намеренно** — папка `src/pages` конфликтует с Pages Router Next.js (Next пытается роутить её как старый роутер, страницы App Router перестают резолвиться). Каждый слайс: `views/<name>/ui/*.tsx` + `views/<name>/index.ts` (публичный API).
-- **`widgets/`** — самостоятельные композитные блоки UI, которые переиспользуются на разных страницах (пока не используется, слой зарезервирован).
+- **`widgets/`** — самостоятельные композитные блоки UI, которые переиспользуются на разных страницах. Пример: `widgets/app-layout` (сайдбар-меню + auth-guard для защищённых страниц).
 - **`features/`** — пользовательские сценарии/фичи. Пример: `features/auth/login`, `features/auth/register`, `features/auth/logout`. Внутри слайса — подпапки `ui/` (компоненты), `model/` (хуки, zod-схемы, состояние фичи), `api/` (запросы к backend).
 - **`entities/`** — бизнес-сущности. Пример: `entities/user` — Zustand-стор авторизации (`model/store.ts`) с персистом в `localStorage`.
 - **`shared/`** — код без привязки к бизнес-логике: `shared/ui` (компоненты shadcn/ui, `components.json` настроен на алиасы `@/shared/*`), `shared/lib` (утилиты, `cn()`), `shared/api` (fetch-клиент `apiRequest`/`ApiError`, хранение JWT в памяти), `shared/config` (переменные окружения), `shared/hooks`, `shared/providers` (TanStack Query provider).
@@ -90,6 +92,11 @@ Frontend построен по методологии **[Feature-Sliced Design](
 - `npx shadcn add <component>` **не обновляет** `globals.css` под уже настроенные `cssVariables: true`. Если в `globals.css` нет полного набора токенов (`--primary`, `--destructive`, `--border`, `--input`, `--muted-foreground` и т.д. + `@theme inline` + `.dark`), то классы типа `bg-primary`/`text-destructive` не генерируются, и вёрстка выглядит «сломанной» (не те цвета/чёрный фон). Актуальный полный набор токенов уже лежит в `frontend/src/app/globals.css` — при добавлении новых компонентов проверяй, что они не приносят токены, которых там нет.
 - Компонент `Label` (и, соответственно, `FormLabel`) из коробки имеет базовый класс `flex`. Это ок для лейбла с иконкой, но **ломает перенос текста**, если внутри лейбла обычный параграф с несколькими inline-ссылками (каждая ссылка/текстовый узел становится отдельным flex-item и переносится как своя колонка). Для текста с несколькими инлайновыми ссылками переопределяй display на `inline` через className (например `className="inline ..."` — tailwind-merge корректно перекрывает `flex`).
 - `FormLabel` подсвечивает текст красным (`data-[error=true]:text-destructive`), а инпуты/чекбоксы — красной рамкой (`aria-invalid:border-destructive`) автоматически при ошибке валидации поля. Если по дизайну красным должен быть только текст `FormMessage` (как договорились для чекбокса согласия), нужно явно перекрывать через className: `data-[error=true]:text-foreground` на `FormLabel` и `aria-invalid:border-input aria-invalid:ring-0` на контроле.
+
+### Известные инфраструктурные фиксы
+
+- **`pnpm lint` (frontend) падал** с `Converting circular structure to JSON` — конфиг подключал правила Next через устаревший `FlatCompat.extends("next/core-web-vitals")`, несовместимый с ESLint 9/Next 16. Исправлено: `frontend/eslint.config.mjs` подключает `@next/eslint-plugin-next` напрямую как flat-config плагин.
+- **Backend не стартовал** (`ERR_MODULE_NOT_FOUND` при `require("@expense-tracker/shared")`) — пакет отдавал сырой `.ts` с `"type": "module"`, а Node в CommonJS-сборке backend не резолвил ESM-импорты без расширений. Исправлено: `packages/shared` теперь собирается в CommonJS (`pnpm build` → `dist/`), `main`/`types` указывают на `dist`; `turbo.json` подтягивает сборку shared перед `dev`.
 
 ## Соглашения
 
@@ -113,6 +120,17 @@ pnpm lint               # ESLint по всем воркспейсам
 pnpm typecheck          # проверка типов
 pnpm build              # production-сборка
 ```
+
+## Ветки (GitHub Flow)
+
+Используем **[GitHub Flow](https://docs.github.com/en/get-started/using-github/github-flow)**: `main` всегда деплоится/стабильна, вся работа — через короткоживущие feature-ветки и Pull Request.
+
+- `main` — защищённая ветка, прямые коммиты в неё запрещены. Изменения попадают туда только через PR.
+- Для новой задачи/фичи создавай отдельную ветку от актуального `main`: `git checkout main && git pull && git checkout -b <тип>/<короткое-описание>`.
+- Именование веток: `<тип>/<kebab-case-описание>` на английском, тип соответствует типам коммитов (`feature`, `fix`, `refactor`, `chore`, `docs`). Пример: `feature/frontend-main-screen`.
+- Одна ветка — одна логическая фича/задача. Не смешивать несколько несвязанных изменений в одной ветке.
+- По завершении работы — открыть PR в `main`, после ревью/проверок слить (предпочтительно squash) и удалить ветку.
+- Периодически подтягивать `main` в свою ветку (`git merge main` или `git rebase main`), чтобы избежать больших конфликтов.
 
 ## Коммиты
 
