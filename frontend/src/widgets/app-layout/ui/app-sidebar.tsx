@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeftRight, Tags, UserRound } from "lucide-react";
 import { useAuthStore } from "@/entities/user";
-import { LogoutButton } from "@/features/auth/logout";
+import { LogoutIconButton } from "@/features/auth/logout";
 import {
   Sidebar,
   SidebarContent,
@@ -68,17 +68,15 @@ export function AppSidebar() {
 
       <SidebarFooter>
         {user ? (
-          <div className="flex flex-col gap-3 p-2">
-            <div className="flex items-center gap-2">
-              <Avatar>
-                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-              </Avatar>
-              <div className="flex min-w-0 flex-col">
-                <span className="truncate text-sm font-medium">{user.name}</span>
-                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-              </div>
+          <div className="flex items-center gap-2 p-2">
+            <Avatar>
+              <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+            </Avatar>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-sm font-medium">{user.name}</span>
+              <span className="truncate text-xs text-muted-foreground">{user.email}</span>
             </div>
-            <LogoutButton />
+            <LogoutIconButton />
           </div>
         ) : null}
       </SidebarFooter>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useAuthStore } from "@/entities/user";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { LogoutButton } from "@/features/auth/logout";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card";
 
 const dateFormatter = new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "long", year: "numeric" });
 
@@ -32,6 +33,9 @@ export function ProfilePage() {
             <span>{dateFormatter.format(new Date(user.createdAt))}</span>
           </div>
         </CardContent>
+        <CardFooter className="border-t">
+          <LogoutButton />
+        </CardFooter>
       </Card>
     </div>
   );
