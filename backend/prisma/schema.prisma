@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  name         String
+  password     String
+  role         String        @default("USER")
+  categories   Category[]
+  expenses     Expense[]
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("users")
+}
+
+model Category {
+  id           String        @id @default(uuid())
+  name         String
+  icon         String?
+  color        String?
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  expenses     Expense[]
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([userId, name])
+  @@map("categories")
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  amount      Decimal  @db.Decimal(12, 2)
+  currency    String   @default("USD")
+  description String?
+  date        DateTime
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  categoryId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, date])
+  @@map("expenses")
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  amount      Decimal         @db.Decimal(12, 2)
+  type        TransactionType
+  description String?
+  date        DateTime
+  category    Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  categoryId  String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  createdAt   DateTime        @default(now())
+
+  @@index([userId, date])
+  @@map("transactions")
+}
