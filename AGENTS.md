@@ -69,7 +69,8 @@ expence-tracker/
 - **Главный экран** (`frontend`): route group `app/(app)` (маршруты `/`, `/categories`, `/profile`) под общим защищённым layout `widgets/app-layout` — auth-guard редиректит неавторизованных на `/login`, сайдбар (shadcn `Sidebar`) с меню и профилем/logout.
   - `/` → `views/dashboard` + `features/transactions/list`: таблица транзакций постранично (10/стр) через `useQuery` (`entities/transaction`, `keepPreviousData`), категория подтягивается отдельным запросом (`entities/category`) и джойнится на клиенте по `categoryId`.
   - Создание транзакции — `features/transactions/create`: диалог (shadcn `Dialog` + `Select`) с формой (react-hook-form + zod), `POST /transactions` через `useMutation`, при успехе инвалидирует `transactionKeys.all`. Категория выбирается из существующих (`GET /categories`); при отсутствии категорий сабмит заблокирован.
-  - `/categories`, `/profile` — минимальные заглушки (`views/categories`, `views/profile`); полноценный CRUD категорий — отдельная задача. Выход из аккаунта: текстовая кнопка в карточке профиля (`LogoutButton`) + иконка `LogoutIconButton` (lucide `LogOut`) в футере сайдбара рядом с именем пользователя.
+  - `/categories` → `views/categories`: список категорий (`Badge`) + создание через `features/categories/create` (диалог с именем, `POST /categories`, инвалидация `categoryKeys.all`); редактирование/удаление — отдельная задача.
+  - `/profile` — минимальная заглушка (`views/profile`). Выход из аккаунта: текстовая кнопка в карточке профиля (`LogoutButton`) + иконка `LogoutIconButton` (lucide `LogOut`) в футере сайдбара рядом с именем пользователя.
 
 ## Frontend: Feature-Sliced Design
 
