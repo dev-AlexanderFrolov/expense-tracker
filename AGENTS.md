@@ -7,6 +7,7 @@
 - **[frontend/AGENTS.md](./frontend/AGENTS.md)** — экраны, auth UI, маршруты, env
 - **[backend/AGENTS.md](./backend/AGENTS.md)** — эндпоинты модулей, Prisma-модели, env
 - **[.cursor/rules/](./.cursor/rules/)** — триггерные правила кода (FSD, Nest, Prisma, git, code review)
+- **[.cursor/docs/](./.cursor/docs/)** — архитектура, API, схема БД, гайд для разработчиков
 
 ## Что это
 
