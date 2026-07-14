@@ -1,10 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsDateString, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from "class-validator";
+import { IsDateString, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, IsUUID } from "class-validator";
 import { CreateTransactionDto as ICreateTransactionDto, TransactionType } from "@expense-tracker/shared";
 
 export class CreateTransactionDto implements ICreateTransactionDto {
   @ApiProperty({ example: 1500 })
   @IsNumber()
+  @IsPositive()
   amount!: number;
 
   @ApiProperty({ enum: TransactionType, example: TransactionType.EXPENSE })

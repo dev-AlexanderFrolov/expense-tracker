@@ -74,7 +74,7 @@ export function CreateTransactionDialog() {
         amount: values.amount,
         type: values.type,
         categoryId: values.categoryId,
-        date: new Date(values.date).toISOString(),
+        date: new Date(`${values.date}T00:00:00`).toISOString(),
         description: values.description?.trim() ? values.description.trim() : undefined,
       },
       { onSuccess: () => handleOpenChange(false) },

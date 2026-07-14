@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { Transaction as PrismaTransaction, TransactionType as PrismaTransactionType } from "@prisma/client";
 import { PaginatedResult, Transaction, TransactionSummary, TransactionType } from "@expense-tracker/shared";
+import { CategoriesService } from "../categories/categories.service";
 import { TransactionsRepository } from "./transactions.repository";
 import { CreateTransactionDto } from "./dto/create-transaction.dto";
 import { UpdateTransactionDto } from "./dto/update-transaction.dto";
@@ -8,9 +9,14 @@ import { QueryTransactionsDto } from "./dto/query-transactions.dto";
 
 @Injectable()
 export class TransactionsService {
-  constructor(private readonly transactionsRepository: TransactionsRepository) {}
+  constructor(
+    private readonly transactionsRepository: TransactionsRepository,
+    private readonly categoriesService: CategoriesService,
+  ) {}
 
   async create(userId: string, dto: CreateTransactionDto): Promise<Transaction> {
+    await this.categoriesService.assertOwnedByUser(userId, dto.categoryId);
+
     const transaction = await this.transactionsRepository.create({
       userId,
       amount: dto.amount,
@@ -53,6 +59,10 @@ export class TransactionsService {
 
   async update(userId: string, id: string, dto: UpdateTransactionDto): Promise<Transaction> {
     await this.findOwnedOrThrow(userId, id);
+
+    if (dto.categoryId !== undefined) {
+      await this.categoriesService.assertOwnedByUser(userId, dto.categoryId);
+    }
 
     const transaction = await this.transactionsRepository.update(id, {
       amount: dto.amount,

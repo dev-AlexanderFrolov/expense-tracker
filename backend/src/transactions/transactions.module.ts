@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { CqrsModule } from "@nestjs/cqrs";
 import { AuthModule } from "../auth/auth.module";
+import { CategoriesModule } from "../categories/categories.module";
 import { TransactionsController } from "./transactions.controller";
 import { TransactionsService } from "./transactions.service";
 import { TransactionsRepository } from "./transactions.repository";
@@ -19,7 +20,7 @@ const queryHandlers = [
 ];
 
 @Module({
-  imports: [CqrsModule, AuthModule],
+  imports: [CqrsModule, AuthModule, CategoriesModule],
   controllers: [TransactionsController],
   providers: [TransactionsService, TransactionsRepository, ...commandHandlers, ...queryHandlers],
 })

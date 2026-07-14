@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsDateString, IsEnum, IsInt, IsOptional, IsUUID, Min } from "class-validator";
+import { IsDateString, IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from "class-validator";
 import { QueryTransactionsDto as IQueryTransactionsDto, TransactionType } from "@expense-tracker/shared";
 
 export class QueryTransactionsDto implements IQueryTransactionsDto {
@@ -36,5 +36,6 @@ export class QueryTransactionsDto implements IQueryTransactionsDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(100)
   limit?: number = 10;
 }

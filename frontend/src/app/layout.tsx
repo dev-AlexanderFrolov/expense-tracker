@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { QueryProvider } from "@/shared/providers/query-provider";
+import { AuthEffects } from "./auth-effects";
 import { Toaster } from "@/shared/ui/sonner";
 import "./globals.css";
 
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="ru">
       <body>
         <QueryProvider>
+          <AuthEffects />
           {children}
           <Toaster />
         </QueryProvider>

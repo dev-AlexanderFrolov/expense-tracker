@@ -10,17 +10,18 @@ export class UsersService {
   constructor(private readonly usersRepository: UsersRepository) {}
 
   async create(data: { email: string; name: string; password: string }): Promise<User> {
-    const existing = await this.usersRepository.findByEmail(data.email);
+    const email = data.email.toLowerCase();
+    const existing = await this.usersRepository.findByEmail(email);
     if (existing) {
       throw new ConflictException("Пользователь с таким email уже существует");
     }
 
-    const user = await this.usersRepository.create(data);
+    const user = await this.usersRepository.create({ ...data, email });
     return this.toPublicUser(user);
   }
 
   async findByEmail(email: string): Promise<UserWithPassword | null> {
-    return this.usersRepository.findByEmail(email);
+    return this.usersRepository.findByEmail(email.toLowerCase());
   }
 
   async findById(id: string): Promise<User | null> {

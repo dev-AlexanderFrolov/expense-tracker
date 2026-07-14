@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { AuthResponse, User } from "@expense-tracker/shared";
 import { setAuthToken } from "@/shared/api/client";
+import { queryClient } from "@/shared/lib/query-client";
 
 interface AuthState {
   user: User | null;
@@ -26,6 +27,7 @@ export const useAuthStore = create<AuthState>()(
       },
       logout: () => {
         setAuthToken(null);
+        queryClient.clear();
         set({ user: null, accessToken: null, isAuthenticated: false });
       },
       setHasHydrated: (hasHydrated) => set({ hasHydrated }),

@@ -8,6 +8,7 @@ import { GetUserByEmailQuery } from "../users/queries/get-user-by-email.query";
 import { UserWithPassword } from "../users/users.service";
 
 const SALT_ROUNDS = 10;
+const DUMMY_PASSWORD_HASH = "$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
 @Injectable()
 export class AuthService {
@@ -33,10 +34,13 @@ export class AuthService {
 
   async validateUser(email: string, password: string): Promise<User> {
     const user = await this.queryBus.execute<GetUserByEmailQuery, UserWithPassword | null>(
-      new GetUserByEmailQuery(email),
+      new GetUserByEmailQuery(email.toLowerCase()),
     );
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    const passwordHash = user?.password ?? DUMMY_PASSWORD_HASH;
+    const isPasswordValid = await bcrypt.compare(password, passwordHash);
+
+    if (!user || !isPasswordValid) {
       throw new UnauthorizedException("Неверный email или пароль");
     }
 

@@ -1,11 +1,12 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, IsUUID } from "class-validator";
+import { IsDateString, IsEnum, IsNumber, IsOptional, IsPositive, IsString, IsUUID } from "class-validator";
 import { UpdateTransactionDto as IUpdateTransactionDto, TransactionType } from "@expense-tracker/shared";
 
 export class UpdateTransactionDto implements IUpdateTransactionDto {
   @ApiPropertyOptional({ example: 1500 })
   @IsOptional()
   @IsNumber()
+  @IsPositive()
   amount?: number;
 
   @ApiPropertyOptional({ enum: TransactionType, example: TransactionType.EXPENSE })

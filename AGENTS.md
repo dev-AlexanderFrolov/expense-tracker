@@ -31,14 +31,15 @@ expence-tracker/
 │       ├── entities/     # FSD-слой entities (бизнес-сущности, напр. user)
 │       └── shared/        # FSD-слой shared (api-клиент, ui из shadcn, lib, config, providers)
 ├── backend/             # NestJS приложение (порт 4000, Swagger на /docs)
-│   ├── src/main.ts      # bootstrap: CORS + ValidationPipe + Swagger
+│   ├── src/main.ts      # bootstrap: helmet, CORS, ValidationPipe, PrismaExceptionFilter; Swagger только вне production
 │   ├── src/app.module.ts
-│   ├── src/prisma/      # PrismaModule (@Global) + PrismaService
+│   ├── src/config/      # validateEnv — fail-fast проверка env при старте
+│   ├── src/prisma/      # PrismaModule (@Global) + PrismaService + PrismaExceptionFilter
 │   ├── src/auth/        # регистрация/логин, JwtAuthGuard, @CurrentUser()
 │   ├── src/users/       # CQRS (CreateUser/GetUserByEmail/GetUserById)
 │   ├── src/categories/  # CRUD категорий (repository → service → controller)
 │   ├── src/transactions/ # CRUD + фильтры + summary по транзакциям (CQRS, как Users)
-│   └── prisma/schema.prisma  # модели User, Category, Expense, Transaction
+│   └── prisma/schema.prisma  # модели User, Category, Transaction
 ├── packages/
 │   ├── shared/          # @expense-tracker/shared — общие типы/DTO
 │   ├── tsconfig/        # @expense-tracker/tsconfig — base/nextjs/nestjs пресеты
@@ -54,40 +55,42 @@ expence-tracker/
 - **Users** (`backend/src/users`): CQRS (команды/запросы), используется из `Auth`.
 - **Categories** (`backend/src/categories`): CRUD категорий трат, требует `JwtAuthGuard`.
   - `POST /categories`, `GET /categories`, `PATCH /categories/:id`, `DELETE /categories/:id`.
-  - Изоляция по пользователю: чужая категория → `404`; дубликат имени (`@@unique([userId, name])`) → `409`.
+  - Изоляция по пользователю: чужая категория → `404`; дубликат имени (`@@unique([userId, name])`) → `409`. `CategoriesService` экспортируется — используется в `Transactions` для проверки владельца `categoryId`.
   - Архитектура: прямой инжект `Controller -> Service -> Repository` (без CQRS, в отличие от `Users`).
   - DTO (`CreateCategoryDto`/`UpdateCategoryDto`) — в `packages/shared` + класс-валидаторы в `backend/src/categories/dto`.
 - **Transactions** (`backend/src/transactions`): учёт доходов/расходов, требует `JwtAuthGuard`.
   - `POST /transactions`, `GET /transactions` (фильтры `dateFrom`/`dateTo`/`type`/`categoryId` + пагинация `page`/`limit`, дефолт 1/10, ответ `PaginatedResult<Transaction>`), `GET /transactions/summary` (агрегация по `month`+`year`, оба обязательны), `GET /transactions/:id`, `PATCH /transactions/:id`, `DELETE /transactions/:id`. Маршрут `summary` объявлен до `:id`.
   - Архитектура: CQRS (`CommandBus`/`QueryBus` в контроллере, хендлеры → `TransactionsService` → `TransactionsRepository`), по образцу `Users`.
-  - Изоляция по пользователю через `findOwnedOrThrow` (как в `Categories`); `amount` — `Decimal(12,2)` → `number`, даты → ISO-строки.
+  - Изоляция по пользователю через `findOwnedOrThrow` (как в `Categories`); при create/update дополнительно проверяется, что `categoryId` принадлежит текущему пользователю. `amount` > 0 (`@IsPositive`), `limit` ≤ 100; `amount` — `Decimal(12,2)` → `number`, даты → ISO-строки.
   - Типы/DTO (`Transaction`, `Create/UpdateTransactionDto`, `TransactionSummary`) — в `packages/shared`.
 - **Auth UI** (`frontend`): страницы `/login` и `/register`, построены на shadcn/ui (`Form`, `Input`, `Button`, `Card`, `Alert`, `Checkbox`).
   - Формы с валидацией react-hook-form + zod (`features/auth/login`, `features/auth/register`).
-  - Успешный логин/регистрация → `AuthResponse` кладётся в Zustand-стор `entities/user` (персист в `localStorage`) и токен подставляется во все запросы `shared/api/client`; редирект на `/` (главный экран).
+  - Успешный логин/регистрация → `AuthResponse` кладётся в Zustand-стор `entities/user` (персист в `localStorage`) и токен подставляется во все запросы `shared/api/client`; редирект на `/` (главный экран). **Риск:** JWT в `localStorage` уязвим к XSS; для production рассмотреть httpOnly cookie + refresh.
+  - `401` от API → `logout()` + редирект на `/login` (`app/auth-effects.tsx`). При `logout` очищается и кэш TanStack Query (`queryClient.clear()`).
   - Регистрация требует чекбокс согласия с условиями (`agreeToTerms` в `features/auth/register/model/schema.ts`, только фронтовая валидация, в `CreateUserDto` на backend не передаётся). Ссылки внутри лейбла ведут на статичные страницы `/terms` и `/privacy` (слайс `views/legal`), открываются в той же вкладке (без `target="_blank"`).
 - **Главный экран** (`frontend`): route group `app/(app)` (маршруты `/`, `/categories`, `/profile`) под общим защищённым layout `widgets/app-layout` — auth-guard редиректит неавторизованных на `/login`, сайдбар (shadcn `Sidebar`) с меню и профилем/logout.
   - `/` → `views/dashboard` + `features/transactions/list`: таблица транзакций постранично (10/стр) через `useQuery` (`entities/transaction`, `keepPreviousData`), категория подтягивается отдельным запросом (`entities/category`) и джойнится на клиенте по `categoryId`.
   - Создание транзакции — `features/transactions/create`: диалог (shadcn `Dialog` + `Select`) с формой (react-hook-form + zod), `POST /transactions` через `useMutation`, при успехе инвалидирует `transactionKeys.all`. Категория выбирается из существующих (`GET /categories`); при отсутствии категорий сабмит заблокирован.
-  - `/categories` → `views/categories`: список категорий (`Badge`) + создание через `features/categories/create` (диалог с именем, `POST /categories`, инвалидация `categoryKeys.all`); редактирование/удаление — отдельная задача.
+  - `/categories` → `views/categories` + `features/categories/list` (список) и `features/categories/create` (диалог); редактирование/удаление — отдельная задача.
   - `/profile` — минимальная заглушка (`views/profile`). Выход из аккаунта: текстовая кнопка в карточке профиля (`LogoutButton`) + иконка `LogoutIconButton` (lucide `LogOut`) в футере сайдбара рядом с именем пользователя.
 
 ## Frontend: Feature-Sliced Design
 
 Frontend построен по методологии **[Feature-Sliced Design](https://feature-sliced.design)**. Слои располагаются в `frontend/src/*`, импорты — только «сверху вниз» (`app → views → widgets → features → entities → shared`), горизонтальные импорты между слайсами одного слоя запрещены.
 
-- **`app/`** — совпадает с Next.js App Router (`layout.tsx`, `page.tsx`, `globals.css`, роуты `login/page.tsx`, `register/page.tsx`). Здесь же глобальные провайдеры (`QueryProvider`, `Toaster`). Роуты — тонкие обёртки, рендерят компонент из `views/*`.
+- **`app/`** — совпадает с Next.js App Router (`layout.tsx`, `page.tsx`, `globals.css`, роуты `login/page.tsx`, `register/page.tsx`). Здесь же глобальные провайдеры (`QueryProvider`, `Toaster`) и `auth-effects.tsx` (обработка 401). Роуты — тонкие обёртки, рендерят компонент из `views/*`.
 - **`views/`** — FSD-слой `pages` (композиция страницы из виджетов/фич). Назван `views`, а не `pages`, **намеренно** — папка `src/pages` конфликтует с Pages Router Next.js (Next пытается роутить её как старый роутер, страницы App Router перестают резолвиться). Каждый слайс: `views/<name>/ui/*.tsx` + `views/<name>/index.ts` (публичный API).
 - **`widgets/`** — самостоятельные композитные блоки UI, которые переиспользуются на разных страницах. Пример: `widgets/app-layout` (сайдбар-меню + auth-guard для защищённых страниц).
 - **`features/`** — пользовательские сценарии/фичи. Пример: `features/auth/login`, `features/auth/register`, `features/auth/logout`. Внутри слайса — подпапки `ui/` (компоненты), `model/` (хуки, zod-схемы, состояние фичи), `api/` (запросы к backend).
 - **`entities/`** — бизнес-сущности. Пример: `entities/user` — Zustand-стор авторизации (`model/store.ts`) с персистом в `localStorage`.
-- **`shared/`** — код без привязки к бизнес-логике: `shared/ui` (компоненты shadcn/ui, `components.json` настроен на алиасы `@/shared/*`), `shared/lib` (утилиты, `cn()`), `shared/api` (fetch-клиент `apiRequest`/`ApiError`, хранение JWT в памяти), `shared/config` (переменные окружения), `shared/hooks`, `shared/providers` (TanStack Query provider).
+- **`shared/`** — код без привязки к бизнес-логике: `shared/ui` (компоненты shadcn/ui), `shared/lib` (утилиты, `query-client.ts`), `shared/api` (`apiRequest`/`ApiError`, JWT в памяти + `setOnUnauthorized`), `shared/config`, `shared/providers` (TanStack Query).
 
 Правила слайсов:
 
 - Публичный API слайса — только через `index.ts` в его корне (`export { X } from "./ui/x"`), импортировать напрямую из внутренних файлов слайса снаружи нельзя.
 - Каждый слайс/сегмент — папка `ui/`, `model/`, `api/` (только те, что нужны).
 - Новые сущности/фичи добавляются как отдельные слайсы, а не расширением существующих файлов.
+- **ESLint FSD boundaries** в `frontend/eslint.config.mjs`: запрет deep imports (`@/features/foo/ui/...`), импортов «вверх» по слоям и из `shared` в верхние слои.
 
 ### Подводные камни shadcn/ui в этом проекте
 
@@ -99,6 +102,7 @@ Frontend построен по методологии **[Feature-Sliced Design](
 
 - **`pnpm lint` (frontend) падал** с `Converting circular structure to JSON` — конфиг подключал правила Next через устаревший `FlatCompat.extends("next/core-web-vitals")`, несовместимый с ESLint 9/Next 16. Исправлено: `frontend/eslint.config.mjs` подключает `@next/eslint-plugin-next` напрямую как flat-config плагин.
 - **Backend не стартовал** (`ERR_MODULE_NOT_FOUND` при `require("@expense-tracker/shared")`) — пакет отдавал сырой `.ts` с `"type": "module"`, а Node в CommonJS-сборке backend не резолвил ESM-импорты без расширений. Исправлено: `packages/shared` теперь собирается в CommonJS (`pnpm build` → `dist/`), `main`/`types` указывают на `dist`; `turbo.json` подтягивает сборку shared перед `dev`.
+- **Безопасность и hardening (code review):** проверка владельца `categoryId` в транзакциях; `validateEnv` при старте (`JWT_SECRET` ≥ 8 символов); `helmet`, throttler на `/auth/*`, `PrismaExceptionFilter` (P2002/P2003 → 409); Swagger только при `NODE_ENV !== production`; CI (`.github/workflows/ci.yml`); unit-тесты backend (`pnpm test`). Модель `Expense` удалена из Prisma/shared.
 
 ## Соглашения
 
@@ -120,6 +124,7 @@ pnpm prisma:migrate     # применить миграции
 pnpm dev                # запустить frontend + backend
 pnpm lint               # ESLint по всем воркспейсам
 pnpm typecheck          # проверка типов
+pnpm test               # unit-тесты backend (Jest)
 pnpm build              # production-сборка
 ```
 
@@ -145,6 +150,6 @@ pnpm build              # production-сборка
 
 ## Окружение
 
-- `backend/.env` — `PORT`, `DATABASE_URL` (см. `backend/.env.example`).
+- `backend/.env` — `PORT`, `DATABASE_URL`, `JWT_SECRET` (≥ 8 символов), `JWT_EXPIRES_IN`; опционально `CORS_ORIGIN` (whitelist через запятую, для production), `NODE_ENV` (см. `backend/.env.example`).
 - `frontend/.env.local` — `NEXT_PUBLIC_API_URL` (см. `frontend/.env.example`).
-- `.env` файлы в git не коммитятся.
+- `.env` файлы в git не коммитятся (в т.ч. `.env.production`, `.env.staging`).

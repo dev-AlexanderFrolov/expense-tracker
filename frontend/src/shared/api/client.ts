@@ -11,9 +11,14 @@ export class ApiError extends Error {
 }
 
 let authToken: string | null = null;
+let onUnauthorized: (() => void) | null = null;
 
 export function setAuthToken(token: string | null): void {
   authToken = token;
+}
+
+export function setOnUnauthorized(handler: (() => void) | null): void {
+  onUnauthorized = handler;
 }
 
 interface RequestOptions {
@@ -47,6 +52,9 @@ export async function apiRequest<TResponse>(
   const payload = response.status !== 204 ? await response.json().catch(() => null) : null;
 
   if (!response.ok) {
+    if (response.status === 401) {
+      onUnauthorized?.();
+    }
     throw new ApiError(extractErrorMessage(payload, response.statusText), response.status);
   }
 
