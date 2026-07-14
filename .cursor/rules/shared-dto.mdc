@@ -1,0 +1,12 @@
+---
+description: Правила пакета @expense-tracker/shared (типы, DTO, сборка)
+globs: packages/shared/**/*.{ts,json}
+alwaysApply: false
+---
+
+# @expense-tracker/shared
+
+- Общие типы и DTO живут только здесь; frontend и backend импортируют `@expense-tracker/shared`.
+- Пакет собирается в CommonJS `dist/` (`main`/`types` указывают на `dist`) — backend CommonJS иначе не резолвит пакет.
+- Nest class-validator декораторы и пайпы оставляй в backend DTO-классах, не тащи в shared.
+- При смене контракта обновляй shared и оба потребителя в одном изменении; `turbo` подтягивает build shared перед `dev`.

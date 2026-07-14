@@ -1,0 +1,13 @@
+---
+description: Базовые правила монорепозитория Expense Tracker (Turborepo, shared, конфиги, env)
+alwaysApply: true
+---
+
+# Project core
+
+- Монорепо: Turborepo + pnpm workspaces (`frontend`, `backend`, `packages/*`). Node 22, pnpm 9.
+- Команды запускай из корня: `pnpm install`, `pnpm dev`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`.
+- Общие типы и DTO — только в `@expense-tracker/shared`. Не дублируй интерфейсы между frontend и backend.
+- tsconfig и ESLint — только через `@expense-tracker/tsconfig/*` и `@expense-tracker/eslint-config`. Не создавай локальные копии.
+- `.env` / `.env.local` / `.env.production` / `.env.staging` в git не коммить.
+- Глубокий контекст воркспейса: `frontend/AGENTS.md`, `backend/AGENTS.md`. Правила кода: `.cursor/rules/*.mdc`.

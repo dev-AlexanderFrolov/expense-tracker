@@ -1,0 +1,29 @@
+---
+description: Архитектура NestJS-модулей, изоляция владельца и hardening
+globs: backend/src/**/*.ts
+alwaysApply: false
+---
+
+# Backend NestJS
+
+## Паттерны модулей
+
+- Auth: JWT (`accessToken` + `user`), `JwtAuthGuard`, `@CurrentUser()`.
+- Categories: `Controller → Service → Repository` (без CQRS).
+- Users и Transactions: CQRS (`CommandBus` / `QueryBus` → service → repository).
+- Типы/DTO — в `@expense-tracker/shared`; class-validator классы — в `backend/src/<module>/dto`.
+
+## Изоляция и валидация
+
+- Чужой ресурс → `404`; дубликат unique → `409`.
+- Транзакции: `findOwnedOrThrow`; при create/update проверяй, что `categoryId` принадлежит текущему пользователю.
+- Маршрут `GET /transactions/summary` объявляй до `:id`.
+- `amount` > 0 (`@IsPositive`), `limit` ≤ 100; Decimal → `number`, даты → ISO-строки.
+
+## Hardening
+
+- `validateEnv` при старте (`JWT_SECRET` ≥ 8 символов).
+- `helmet`, throttler на `/auth/*`, `PrismaExceptionFilter` (P2002/P2003 → 409).
+- Swagger только при `NODE_ENV !== production`.
+
+Справочник эндпоинтов: `backend/AGENTS.md`.

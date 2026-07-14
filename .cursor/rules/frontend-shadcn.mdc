@@ -1,0 +1,11 @@
+---
+description: Подводные камни shadcn/ui и CSS-токенов в frontend
+globs: frontend/src/**/*.{tsx,css}
+alwaysApply: false
+---
+
+# shadcn/ui
+
+- `npx shadcn add <component>` не обновляет токены под `cssVariables: true`. Сверяй с полным набором в `frontend/src/app/globals.css` (`--primary`, `--destructive`, `--border`, `--input`, `--muted-foreground`, `@theme inline`, `.dark`).
+- `Label` / `FormLabel` по умолчанию `flex` — ломает перенос текста с несколькими inline-ссылками. Для такого текста: `className="inline ..."`.
+- Если красным должен быть только `FormMessage` (не лейбл/рамка): на `FormLabel` — `data-[error=true]:text-foreground`, на контроле — `aria-invalid:border-input aria-invalid:ring-0`.

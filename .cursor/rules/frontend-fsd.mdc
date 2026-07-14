@@ -1,0 +1,20 @@
+---
+description: Feature-Sliced Design и клиентский стейт для frontend
+globs: frontend/src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend FSD
+
+Слои в `frontend/src/*`, импорты только сверху вниз:
+
+`app → views → widgets → features → entities → shared`
+
+- Горизонтальные импорты между слайсами одного слоя запрещены.
+- Публичный API слайса — только через корневой `index.ts`; deep imports (`@/features/foo/ui/...`) запрещены.
+- Слой pages назван `views/`, не `pages/` — иначе конфликт с Pages Router Next.js.
+- Сегменты слайса: `ui/`, `model/`, `api/` (только нужные).
+- Новые сущности/фичи — отдельные слайсы, не раздувай существующие файлы.
+- Клиентский стейт (auth): Zustand. Серверные данные: TanStack Query.
+- Формы: react-hook-form + zod.
+- Роуты в `app/` — тонкие обёртки, композиция страницы в `views/*`.

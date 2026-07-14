@@ -1,0 +1,13 @@
+---
+description: Соглашения Prisma-схемы и PrismaService
+globs: backend/prisma/**/*
+alwaysApply: false
+---
+
+# Prisma
+
+- Одна схема: `backend/prisma/schema.prisma`.
+- Таблицы в snake_case через `@@map`.
+- `PrismaService` глобальный (`PrismaModule` `@Global`) — не импортируй `PrismaModule` повторно в каждый feature-модуль.
+- Модель `Expense` удалена — не возвращай её в схему/shared.
+- После изменений схемы: `pnpm prisma:generate` и при необходимости `pnpm prisma:migrate` из корня.
