@@ -41,6 +41,10 @@ export class CategoriesService {
     await this.categoriesRepository.delete(id);
   }
 
+  async assertOwnedByUser(userId: string, categoryId: string): Promise<void> {
+    await this.findOwnedOrThrow(userId, categoryId);
+  }
+
   private async findOwnedOrThrow(userId: string, id: string): Promise<PrismaCategory> {
     const category = await this.categoriesRepository.findById(id);
     if (!category || category.userId !== userId) {

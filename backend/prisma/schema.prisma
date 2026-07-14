@@ -14,7 +14,6 @@ model User {
   password     String
   role         String        @default("USER")
   categories   Category[]
-  expenses     Expense[]
   transactions Transaction[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -29,30 +28,12 @@ model Category {
   color        String?
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId       String
-  expenses     Expense[]
   transactions Transaction[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
   @@unique([userId, name])
   @@map("categories")
-}
-
-model Expense {
-  id          String   @id @default(uuid())
-  amount      Decimal  @db.Decimal(12, 2)
-  currency    String   @default("USD")
-  description String?
-  date        DateTime
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-  category    Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  categoryId  String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([userId, date])
-  @@map("expenses")
 }
 
 enum TransactionType {

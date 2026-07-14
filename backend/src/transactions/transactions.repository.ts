@@ -9,6 +9,16 @@ export interface TransactionFilters {
   categoryId?: string;
 }
 
+export interface TransactionPagination {
+  page: number;
+  limit: number;
+}
+
+export interface PaginatedTransactions {
+  items: Transaction[];
+  total: number;
+}
+
 export interface TransactionCategoryAggregate {
   categoryId: string;
   type: TransactionType;
@@ -30,11 +40,25 @@ export class TransactionsRepository {
     return this.prisma.transaction.create({ data });
   }
 
-  findAllByUser(userId: string, filters: TransactionFilters = {}): Promise<Transaction[]> {
-    return this.prisma.transaction.findMany({
-      where: this.buildWhere(userId, filters),
-      orderBy: { date: "desc" },
-    });
+  async findAllByUser(
+    userId: string,
+    filters: TransactionFilters = {},
+    pagination: TransactionPagination,
+  ): Promise<PaginatedTransactions> {
+    const where = this.buildWhere(userId, filters);
+    const { page, limit } = pagination;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.transaction.findMany({
+        where,
+        orderBy: { date: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.transaction.count({ where }),
+    ]);
+
+    return { items, total };
   }
 
   findById(id: string): Promise<Transaction | null> {

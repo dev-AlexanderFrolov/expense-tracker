@@ -1,14 +1,3 @@
-export enum ExpenseCategory {
-  FOOD = "FOOD",
-  TRANSPORT = "TRANSPORT",
-  HOUSING = "HOUSING",
-  UTILITIES = "UTILITIES",
-  ENTERTAINMENT = "ENTERTAINMENT",
-  HEALTH = "HEALTH",
-  EDUCATION = "EDUCATION",
-  OTHER = "OTHER",
-}
-
 export interface Category {
   id: string;
   name: string;
