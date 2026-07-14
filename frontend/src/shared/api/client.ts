@@ -52,7 +52,8 @@ export async function apiRequest<TResponse>(
   const payload = response.status !== 204 ? await response.json().catch(() => null) : null;
 
   if (!response.ok) {
-    if (response.status === 401) {
+    const isAuthEndpoint = path === "/auth/login" || path === "/auth/register";
+    if (response.status === 401 && !isAuthEndpoint) {
       onUnauthorized?.();
     }
     throw new ApiError(extractErrorMessage(payload, response.statusText), response.status);

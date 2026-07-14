@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getTransactions, transactionKeys } from "@/entities/transaction";
 import { getCategories, categoryKeys } from "@/entities/category";
@@ -8,8 +8,7 @@ import { useAuthStore } from "@/entities/user";
 
 const PAGE_SIZE = 10;
 
-export function useTransactionsList() {
-  const [page, setPage] = useState(1);
+export function useTransactionsList(page: number, onPageChange: (page: number) => void) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const query = { page, limit: PAGE_SIZE };
@@ -27,9 +26,16 @@ export function useTransactionsList() {
     enabled: isAuthenticated,
   });
 
+  useEffect(() => {
+    const data = transactionsQuery.data;
+    if (!data || data.total === 0) return;
+
+    if (page > data.totalPages) {
+      onPageChange(data.totalPages);
+    }
+  }, [page, transactionsQuery.data, onPageChange]);
+
   return {
-    page,
-    setPage,
     pageSize: PAGE_SIZE,
     transactions: transactionsQuery.data,
     categories: categoriesQuery.data,

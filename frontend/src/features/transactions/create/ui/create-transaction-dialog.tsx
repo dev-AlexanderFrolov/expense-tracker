@@ -35,7 +35,11 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function CreateTransactionDialog() {
+interface CreateTransactionDialogProps {
+  onCreated?: () => void;
+}
+
+export function CreateTransactionDialog({ onCreated }: CreateTransactionDialogProps) {
   const [open, setOpen] = useState(false);
   const { mutate, isPending, error, reset } = useCreateTransaction();
   const categoriesQuery = useQuery({ queryKey: categoryKeys.list(), queryFn: getCategories });
@@ -77,7 +81,12 @@ export function CreateTransactionDialog() {
         date: new Date(`${values.date}T00:00:00`).toISOString(),
         description: values.description?.trim() ? values.description.trim() : undefined,
       },
-      { onSuccess: () => handleOpenChange(false) },
+      {
+        onSuccess: () => {
+          handleOpenChange(false);
+          onCreated?.();
+        },
+      },
     );
   };
 

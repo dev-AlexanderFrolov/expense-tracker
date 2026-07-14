@@ -22,9 +22,16 @@ function getCategoryName(categories: Category[] | undefined, categoryId: string)
   return categories?.find((category) => category.id === categoryId)?.name ?? "—";
 }
 
-export function TransactionsList() {
-  const { page, setPage, transactions, categories, isLoading, isFetching, isError, error } =
-    useTransactionsList();
+interface TransactionsListProps {
+  page: number;
+  onPageChange: (page: number) => void;
+}
+
+export function TransactionsList({ page, onPageChange }: TransactionsListProps) {
+  const { transactions, categories, isLoading, isFetching, isError, error } = useTransactionsList(
+    page,
+    onPageChange,
+  );
 
   if (isLoading) {
     return (
@@ -48,8 +55,9 @@ export function TransactionsList() {
   }
 
   const items = transactions?.items ?? [];
+  const total = transactions?.total ?? 0;
 
-  if (items.length === 0) {
+  if (total === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed py-16 text-center">
         <p className="text-sm font-medium">Пока нет транзакций</p>
@@ -100,7 +108,7 @@ export function TransactionsList() {
       <TransactionsPagination
         page={page}
         totalPages={transactions?.totalPages ?? 1}
-        onPageChange={setPage}
+        onPageChange={onPageChange}
         disabled={isFetching}
       />
     </div>
