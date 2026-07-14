@@ -7,6 +7,7 @@ import { CreateTransactionDto } from "./dto/create-transaction.dto";
 import { UpdateTransactionDto } from "./dto/update-transaction.dto";
 import { QueryTransactionsDto } from "./dto/query-transactions.dto";
 
+/** Бизнес-логика транзакций: CRUD, фильтрация и агрегация. */
 @Injectable()
 export class TransactionsService {
   constructor(
@@ -14,6 +15,14 @@ export class TransactionsService {
     private readonly categoriesService: CategoriesService,
   ) {}
 
+  /**
+   * Создаёт транзакцию после проверки владения категорией.
+   *
+   * @param userId - Идентификатор владельца.
+   * @param dto - Данные новой транзакции.
+   * @returns Созданная транзакция в публичном формате.
+   * @throws {NotFoundException} Категория не найдена или принадлежит другому пользователю.
+   */
   async create(userId: string, dto: CreateTransactionDto): Promise<Transaction> {
     await this.categoriesService.assertOwnedByUser(userId, dto.categoryId);
 
@@ -28,6 +37,13 @@ export class TransactionsService {
     return this.toPublic(transaction);
   }
 
+  /**
+   * Возвращает страницу транзакций пользователя с фильтрами.
+   *
+   * @param userId - Идентификатор владельца.
+   * @param query - Фильтры и параметры пагинации.
+   * @returns Пагинированный список транзакций.
+   */
   async findAll(userId: string, query: QueryTransactionsDto): Promise<PaginatedResult<Transaction>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -52,11 +68,28 @@ export class TransactionsService {
     };
   }
 
+  /**
+   * Возвращает одну транзакцию пользователя.
+   *
+   * @param userId - Идентификатор владельца.
+   * @param id - Идентификатор транзакции.
+   * @returns Транзакция в публичном формате.
+   * @throws {NotFoundException} Транзакция не найдена или принадлежит другому пользователю.
+   */
   async findOne(userId: string, id: string): Promise<Transaction> {
     const transaction = await this.findOwnedOrThrow(userId, id);
     return this.toPublic(transaction);
   }
 
+  /**
+   * Обновляет транзакцию пользователя.
+   *
+   * @param userId - Идентификатор владельца.
+   * @param id - Идентификатор транзакции.
+   * @param dto - Поля для обновления.
+   * @returns Обновлённая транзакция в публичном формате.
+   * @throws {NotFoundException} Транзакция или категория не найдены / принадлежат другому пользователю.
+   */
   async update(userId: string, id: string, dto: UpdateTransactionDto): Promise<Transaction> {
     await this.findOwnedOrThrow(userId, id);
 
@@ -74,11 +107,26 @@ export class TransactionsService {
     return this.toPublic(transaction);
   }
 
+  /**
+   * Удаляет транзакцию пользователя.
+   *
+   * @param userId - Идентификатор владельца.
+   * @param id - Идентификатор транзакции.
+   * @throws {NotFoundException} Транзакция не найдена или принадлежит другому пользователю.
+   */
   async remove(userId: string, id: string): Promise<void> {
     await this.findOwnedOrThrow(userId, id);
     await this.transactionsRepository.delete(id);
   }
 
+  /**
+   * Формирует сводку доходов и расходов за указанный месяц.
+   *
+   * @param userId - Идентификатор владельца.
+   * @param month - Номер месяца (1–12).
+   * @param year - Календарный год.
+   * @returns Агрегированные суммы и разбивка по категориям.
+   */
   async summary(userId: string, month: number, year: number): Promise<TransactionSummary> {
     const aggregates = await this.transactionsRepository.aggregateByPeriod(userId, month, year);
 
@@ -108,6 +156,14 @@ export class TransactionsService {
     };
   }
 
+  /**
+   * Загружает транзакцию и проверяет принадлежность пользователю.
+   *
+   * @param userId - Идентификатор владельца.
+   * @param id - Идентификатор транзакции.
+   * @returns Prisma-модель транзакции.
+   * @throws {NotFoundException} Транзакция не найдена или принадлежит другому пользователю.
+   */
   private async findOwnedOrThrow(userId: string, id: string): Promise<PrismaTransaction> {
     const transaction = await this.transactionsRepository.findById(id);
     if (!transaction || transaction.userId !== userId) {
@@ -116,6 +172,12 @@ export class TransactionsService {
     return transaction;
   }
 
+  /**
+   * Преобразует Prisma-модель транзакции в публичный DTO.
+   *
+   * @param transaction - Prisma-модель транзакции.
+   * @returns Транзакция с числовой суммой и ISO-датами.
+   */
   private toPublic(transaction: PrismaTransaction): Transaction {
     const { id, amount, type, description, date, categoryId, userId, createdAt } = transaction;
     return {

@@ -36,6 +36,9 @@ async function bootstrap() {
       .setDescription("REST API трекера расходов")
       .setVersion("0.1.0")
       .addBearerAuth()
+      .addTag("auth", "Регистрация и авторизация")
+      .addTag("categories", "Категории расходов и доходов")
+      .addTag("transactions", "Транзакции: CRUD, фильтры и сводка")
       .build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup("docs", app, document);

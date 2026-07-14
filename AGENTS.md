@@ -67,3 +67,7 @@ pnpm build              # production-сборка
 - `backend/.env` — см. [backend/AGENTS.md](./backend/AGENTS.md)
 - `frontend/.env.local` — см. [frontend/AGENTS.md](./frontend/AGENTS.md)
 - `.env` файлы в git не коммитятся (в т.ч. `.env.production`, `.env.staging`).
+
+## Актуализация документации
+
+После изменения любых методов необходимо актуализировать или добавить JSdoc, а для DTO и контроллеров — добавить декораторы Swagger.
